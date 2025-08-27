@@ -1,0 +1,55 @@
+pipeline {
+    agent any
+
+    environment {
+        NODEJS_HOME = tool name: 'Nodejs24'
+        PATH = "${NODEJS_HOME}/bin:${env.PATH}"
+        DOCKER_IMAGE = 'node-app-image'
+        APP_NAME = 'node-app-container'
+    }
+
+    stages {
+        stage("Clone Repo") {
+            steps {
+                git(
+                    url: 'https://github.com/mustafa007077/nextjs.git',
+                    credentialsId: 'gitcred',
+                    branch: 'master'
+                )
+            }
+        }
+
+        stage("Install npm") {
+            steps {
+                sh 'npm install'
+            }
+        }
+
+        stage("Inject .env from Jenkins Credentials") {
+    steps {
+        withCredentials([file(credentialsId: 'env-file', variable: 'ENV_FILE')]) {
+// ENV_FILE(variable for cred env-file) and WORKSPACE(jenkins built in env variable for /var/lib/jenkins/workspace/Backenddockerimage)
+            sh 'cp "$ENV_FILE" "$WORKSPACE/.env"'
+        }
+    }
+}
+        stage("Build Docker Image") {
+            steps {
+                sh "docker build -t $DOCKER_IMAGE ."
+            }
+        }
+
+        stage("Run Docker Container") {
+            steps {
+                sh "docker run -d --name $APP_NAME -p 3000:3000 $DOCKER_IMAGE"
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Deployment successful!"
+        }
+        failure {
+            echo "Deployment failed. Check logs for details."
+        }
