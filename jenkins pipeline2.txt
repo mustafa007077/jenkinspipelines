@@ -1,0 +1,40 @@
+pipeline{
+    agent any
+     environment {
+        NODEJS_HOME = tool name: 'NodeJS-18' // Use the name you configured in Jenkins NodeJS plugin
+        PATH = "${NODEJS_HOME}/bin:${env.PATH}"
+        APP_DIR = '/var/www/node-app' // Change this to your desired deployment directory
+    }
+    stages{
+        stage("check github repo"){
+            steps{
+               git(
+                     url: 'https://github.com/mustafa007077/nextjs.git',
+                     credentialsId: 'gitcred', // ← Match the ID you set in Jenkins
+                     branch: 'master'
+) 
+            }
+        }
+        stage("install npm"){
+            steps{
+                
+                sh '''
+                npm install
+            '''
+            }
+        }
+        stage('Deploy Locally') {
+        steps {
+                sh '''
+                sudo rm -rf $APP_DIR
+                sudo mkdir -p $APP_DIR
+                sudo cp -r * $APP_DIR
+                sudo chown -R jenkins:jenkins $APP_DIR
+                cd $APP_DIR
+                npm install
+                /usr/local/bin/pm2 restart server.js || /usr/local/bin/pm2 start server.js
+                '''
+            }
+        }
+    }
+}
